@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f4efe4">
 <title>ロシア語マスター — Русский язык</title>
 <link rel="manifest" href="./manifest.json">
@@ -160,6 +160,16 @@
   }
   .mode-tab.active{background:var(--bg-card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.05);}
   .study-counter{font-family:'Shippori Mincho',serif;font-size:14px;color:var(--ink-soft);font-variant-numeric:tabular-nums;letter-spacing:.1em;}
+
+  /* Audio-trigger Cyrillic text is a real <button> (keyboard + screen-reader access).
+     Strip native button chrome and inherit the surrounding text styling/alignment so the
+     look is identical to the former <div>. Declared before the per-element rules below so
+     those rules win on any property they set. */
+  .sent-ru,.vocab-ru,.fc-ru,.quiz-ru{
+    appearance:none;-webkit-appearance:none;
+    border:none;background:transparent;color:inherit;
+    font:inherit;text-align:inherit;cursor:pointer;width:auto;
+  }
 
   /* SENTENCE LIST */
   .sentence-list{padding:14px 16px 24px;}
@@ -427,7 +437,7 @@
       </button>
       <input type="file" id="import-file" accept=".json,application/json" hidden>
     </div>
-    <div class="data-msg" id="data-msg"></div>
+    <div class="data-msg" id="data-msg" role="status" aria-live="polite"></div>
     <div class="footer-mark">
       <div class="symbol">✦</div>
       <div class="text">Учитесь с удовольствием!</div>
@@ -479,7 +489,7 @@
       <div class="flashcard" id="flashcard">
         <span class="fc-num" id="fc-num">01</span>
         <span class="fc-side" id="fc-side">FRONT</span>
-        <div class="fc-ru" id="fc-ru">—</div>
+        <button type="button" class="fc-ru" id="fc-ru" lang="ru">—</button>
         <div class="fc-ph" id="fc-ph">—</div>
         <div class="fc-jp fc-hidden" id="fc-jp">—</div>
         <div class="fc-hint" id="fc-hint">タップで意味を見る</div>
@@ -491,6 +501,7 @@
 </div>
 
 
+<script src="./srs.js"></script>
 <script>
 'use strict';
 let COURSES = {};
@@ -554,26 +565,7 @@ function exportProgress(){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   showDataMsg('エクスポートしました(学習済 '+Object.keys(progress.learned).length+' 件)');
 }
-// Newer-wins merge: an SRS entry from the file replaces the local one only if
-// its lastReviewed timestamp is the same or later, so importing an old backup
-// never rolls back fresher local study history.
-function mergeProgress(p){
-  let nl=0,ns=0;
-  Object.keys(p.learned||{}).forEach(k=>{
-    if(!progress.learned[k]) nl++;
-    progress.learned[k]=1;
-  });
-  Object.keys(p.srs||{}).forEach(k=>{
-    const s=p.srs[k];
-    if(!s||typeof s!=='object') return;
-    const cur=progress.srs[k];
-    if(!cur||(+s.l||0)>=(+cur.l||0)){
-      progress.srs[k]={e:+s.e||2.5,i:+s.i||0,r:+s.r||0,d:+s.d||0,l:+s.l||0};
-      ns++;
-    }
-  });
-  return {learned:nl,srs:ns};
-}
+// mergeProgress(新しい記録優先の進捗マージ)は単体テストのため srs.js に切り出してある。
 function importProgressFile(file){
   const reader=new FileReader();
   reader.onload=()=>{
@@ -583,7 +575,7 @@ function importProgressFile(file){
       if(!p||typeof p.learned!=='object'||typeof p.srs!=='object') throw new Error('format');
       const total=Object.keys(p.learned).length;
       if(!confirm('バックアップから '+total+' 件の学習記録を読み込みます。\n現在の進捗と統合します(新しい記録が優先されます)。よろしいですか?')) return;
-      const r=mergeProgress(p);
+      const r=mergeProgress(progress,p);
       saveProgress();
       renderHome();
       showDataMsg('インポート完了:学習済 '+r.learned+' 件を追加、復習データ '+r.srs+' 件を更新しました');
@@ -615,6 +607,9 @@ function getGlobalStats(){let t=0,l=0;Object.keys(COURSES).forEach(k=>{const s=g
 // SRS — SM-2 (lite). State per sentence: e(ase), i(nterval days), r(eps), d(ue ms), l(astReviewed ms).
 // Quality grades used by UI: 1=Again, 4=Good, 5=Easy.
 const DAY_MS=86400000;
+// SRSの純粋ロジック(nextIntervalDays / nextEase)と進捗マージ(mergeProgress)は srs.js に
+// 切り出してあり、Nodeで単体テストしている(srs.test.js)。srs.js はこのスクリプトより前に
+// classic <script> として読み込まれ、これらをグローバルとして公開する。
 function gradeSrs(c,u,i,q){
   const k=sentKey(c,u,i);
   const now=Date.now();
@@ -623,14 +618,11 @@ function gradeSrs(c,u,i,q){
     s.r=0;s.i=0;
     s.d=now+10*60*1000;          // 10-min relearn
   }else{
-    if(s.r===0)s.i=1;
-    else if(s.r===1)s.i=6;
-    else s.i=Math.max(1,Math.round(s.i*s.e));
-    if(q===5)s.i=Math.max(s.i+1,Math.round(s.i*1.3));   // easy bonus
+    s.i=nextIntervalDays(s,q);
     s.r+=1;
     s.d=now+s.i*DAY_MS;
   }
-  s.e=Math.max(1.3,s.e+(0.1-(5-q)*(0.08+(5-q)*0.02))); // SM-2 ease formula
+  s.e=nextEase(s.e,q); // SM-2 ease更新(srs.js、srs.test.jsで検証)
   s.l=now;
   progress.srs[k]=s;
   if(s.r>=1) progress.learned[k]=1;
@@ -638,14 +630,9 @@ function gradeSrs(c,u,i,q){
 }
 function isDue(c,u,i){const s=progress.srs[sentKey(c,u,i)];return !!s && s.d<=Date.now();}
 function previewInterval(c,u,i,q){
-  const orig=progress.srs[sentKey(c,u,i)]||{e:2.5,i:0,r:0,d:0,l:0};
-  const s={...orig};
   if(q<3) return '10分';
-  if(s.r===0) s.i=1;
-  else if(s.r===1) s.i=6;
-  else s.i=Math.max(1,Math.round(s.i*s.e));
-  if(q===5) s.i=Math.max(s.i+1,Math.round(s.i*1.3));
-  return s.i+'日';
+  const s=progress.srs[sentKey(c,u,i)]||{e:2.5,i:0,r:0,d:0,l:0};
+  return nextIntervalDays(s,q)+'日';
 }
 function getUnitDueCount(c,uid){
   const u=COURSES[c].units.find(x=>x.id===uid);if(!u)return 0;
@@ -848,7 +835,7 @@ function openUnit(uid){
 const FLASHCARD_TEMPLATE =
   `<span class="fc-num" id="fc-num">01</span>`+
   `<span class="fc-side" id="fc-side">FRONT</span>`+
-  `<div class="fc-ru" id="fc-ru">—</div>`+
+  `<button type="button" class="fc-ru" id="fc-ru" lang="ru">—</button>`+
   `<div class="fc-ph" id="fc-ph">—</div>`+
   `<div class="fc-jp fc-hidden" id="fc-jp">—</div>`+
   `<div class="fc-hint" id="fc-hint">タップで意味を見る</div>`;
@@ -924,7 +911,7 @@ function endGlobalReview(){
 function buildVocabHtml(s, sentIdx){
   if(!s.words || s.words.length===0) return {toggle:'', list:''};
   const items = s.words.map((w,wi)=>(
-    `<div class="vocab-item"><div class="vocab-ru" data-sidx="${sentIdx}" data-widx="${wi}">${escapeHtml(w.ru)}</div><div class="vocab-ph">${escapeHtml(w.ph)}</div><div class="vocab-jp">${escapeHtml(w.jp)}</div></div>`
+    `<div class="vocab-item"><button type="button" class="vocab-ru" data-sidx="${sentIdx}" data-widx="${wi}" lang="ru">${escapeHtml(w.ru)}</button><div class="vocab-ph">${escapeHtml(w.ph)}</div><div class="vocab-jp">${escapeHtml(w.jp)}</div></div>`
   )).join('');
   return {
     toggle: `<button class="vocab-toggle" data-idx="${sentIdx}"><span>新出語 ${s.words.length} 語 (vocabulary)</span><span class="arrow">▶</span></button>`,
@@ -950,7 +937,7 @@ function renderList(){
     const card=document.createElement('div');card.className='sentence-card';
     card.innerHTML=
       `<div class="num">№ ${String(i+1).padStart(3,'0')}</div>`+
-      `<div class="sent-ru" data-idx="${i}">${escapeHtml(s.ru)}${ICONS.speaker}</div>`+
+      `<button type="button" class="sent-ru" data-idx="${i}" lang="ru">${escapeHtml(s.ru)}${ICONS.speaker}</button>`+
       `<div class="sent-ph">${escapeHtml(s.ph)}</div>`+
       `<div class="sent-jp">${escapeHtml(s.jp)}</div>`+
       `<div class="sent-actions">`+
@@ -1123,7 +1110,7 @@ function renderQuizQ(){
 
   // Question card
   const qh = q.direction==='ru2jp'
-    ? `<div class="quiz-question"><div class="quiz-prompt">ロシア語 → 日本語</div><div class="quiz-ru" id="quiz-ru">${escapeHtml(sent.ru)}</div><div class="quiz-ph-small">${escapeHtml(sent.ph)}</div></div>`
+    ? `<div class="quiz-question"><div class="quiz-prompt">ロシア語 → 日本語</div><button type="button" class="quiz-ru" id="quiz-ru" lang="ru">${escapeHtml(sent.ru)}</button><div class="quiz-ph-small">${escapeHtml(sent.ph)}</div></div>`
     : `<div class="quiz-question"><div class="quiz-prompt">日本語 → ロシア語</div><div class="quiz-jp">${escapeHtml(sent.jp)}</div></div>`;
 
   // Options
@@ -1197,11 +1184,12 @@ $$('.mode-tab').forEach(t=>t.addEventListener('click',()=>{
   t.classList.add('active');showMode(t.dataset.mode);
 }));
 $('flashcard').addEventListener('click',(e)=>{
-  if(e.target.id==='fc-ru'){
+  const ruBtn=e.target.closest('#fc-ru');
+  if(ruBtn){
     // Use the current deck item — in review mode state.cardIdx indexes the queue, not u.sentences.
     const item=currentItem();
     if(!item) return;
-    playWithHighlight(e.target, item.s.ru, 0.75);
+    playWithHighlight(ruBtn, item.s.ru, 0.75);
     return;
   }
   flipCard();

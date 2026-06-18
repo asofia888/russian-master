@@ -14,7 +14,9 @@
 
 ```
 russian-master/
-├── index.html            # アプリ本体(HTML+CSS+JS の単一ファイル)
+├── index.html            # アプリ本体(HTML+CSS+JS)
+├── srs.js                # SRS間隔計算・進捗マージの純粋ロジック(ブラウザ/Node共用)
+├── srs.test.js           # srs.js の単体テスト(node --test)
 ├── courses.json          # 学習データ(コース→ユニット→例文・語彙)
 ├── generate-audio.js     # 音声一括生成スクリプト(Node.js)
 ├── audio-manifest.json   # テキスト→MP3ファイル名の対応表(generate-audio.js が生成)
@@ -122,6 +124,18 @@ npx serve .
 
 > Service Worker のキャッシュが効きすぎるときは、DevTools → Application → Service Workers で
 > 「Update on reload」を有効にするか、キャッシュを削除してください。
+
+## テスト
+
+SRSの間隔計算(`nextIntervalDays` / `nextEase`)と進捗マージ(`mergeProgress`)の純粋ロジックは
+`srs.js` に分離してあり、単体テストできます(依存パッケージ不要・Node標準のテストランナー)。
+
+```bash
+npm test     # = node --test  (srs.test.js を実行)
+```
+
+`srs.js` はブラウザでは `index.html` から `<script>` で読み込まれ、Node では `require` でテストされます。
+同じコードを出荷とテストの両方で使うため、テストが実挙動を保証します。
 
 ## デプロイ
 

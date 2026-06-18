@@ -7,7 +7,8 @@
     "voices": "node generate-audio.js --list-voices",
     "audio:dry": "node generate-audio.js --dry-run",
     "audio": "node generate-audio.js",
-    "serve": "npx serve ."
+    "serve": "npx serve .",
+    "test": "node --test"
   },
   "dependencies": {
     "@google-cloud/text-to-speech": "^6.4.1"
