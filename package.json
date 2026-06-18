@@ -1,0 +1,15 @@
+{
+  "name": "russian-master",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ロシア語マスター — 日本語話者のための例文ベースのロシア語学習PWA",
+  "scripts": {
+    "voices": "node generate-audio.js --list-voices",
+    "audio:dry": "node generate-audio.js --dry-run",
+    "audio": "node generate-audio.js",
+    "serve": "npx serve ."
+  },
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^6.4.1"
+  }
+}

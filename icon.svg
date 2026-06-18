@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#f4efe4"/>
+  <rect x="56" y="56" width="400" height="400" rx="56" fill="#a8391a"/>
+  <rect x="80" y="80" width="352" height="352" rx="40" fill="none" stroke="#b8955a" stroke-width="2" opacity="0.55"/>
+  <text x="256" y="330" text-anchor="middle" font-family="'PT Serif','Georgia','Times New Roman',serif" font-weight="700" font-size="240" fill="#fdfaf3">Я</text>
+  <text x="256" y="408" text-anchor="middle" font-family="'PT Serif','Georgia','Times New Roman',serif" font-size="40" fill="#d9c89a" letter-spacing="2">русский</text>
+</svg>

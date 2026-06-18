@@ -1,0 +1,12 @@
+# 依存パッケージ
+node_modules/
+
+# 認証情報は絶対にコミットしない(リポジトリの外に置くこと)
+service-account.json
+service-account*.json
+*-key.json
+*.pem
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
