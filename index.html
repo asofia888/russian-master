@@ -644,7 +644,8 @@ function getGlobalDueCount(){return Object.keys(COURSES).reduce((a,k)=>a+getCour
 // TTS - Chirp 3: HD MP3再生 + Web Speech APIフォールバック(ロシア語)
 let ruVoice = null;
 let audioManifest = null;
-let manifestLoaded = false;
+let manifestReady = false;      // 読み込みが成功/失敗どちらでも「決着」したか
+let manifestPromise = null;     // 進行中の読み込みPromise(初回1回だけ生成・共有)
 let currentAudio = null;
 const AUDIO_BASE = './audio/';
 const MANIFEST_URL = './audio-manifest.json';
@@ -652,19 +653,23 @@ const MANIFEST_URL = './audio-manifest.json';
 function loadVoices(){if(!('speechSynthesis' in window))return false;const v=speechSynthesis.getVoices();if(v.length===0)return false;ruVoice=v.find(x=>x.lang&&x.lang.toLowerCase().startsWith('ru'))||null;return true;}
 function initVoices(){if(!('speechSynthesis' in window))return;if(!loadVoices())speechSynthesis.onvoiceschanged=loadVoices;}
 
-// マニフェスト読み込み(初回1回のみ)
-async function loadManifest(){
-  if(manifestLoaded) return;
-  manifestLoaded = true;
-  try{
-    const res = await fetch(MANIFEST_URL,{cache:'force-cache'});
-    if(res.ok){
-      audioManifest = await res.json();
-      console.log('Audio manifest loaded:',Object.keys(audioManifest).length,'entries');
-    }
-  }catch(e){
-    console.log('Manifest unavailable, using Web Speech API fallback');
+// マニフェスト読み込み(初回1回だけ実行してPromiseを共有する・冪等)。
+// 成否に関わらず manifestReady を立て、speak() はこれを待ってから再生方法を決める
+// ので、タップが速くてもMP3を取りこぼして合成音声に落ちることがない。
+function loadManifest(){
+  if(!manifestPromise){
+    manifestPromise = fetch(MANIFEST_URL,{cache:'force-cache'})
+      .then(res => res.ok ? res.json() : null)
+      .catch(() => null)
+      .then(json => {
+        audioManifest = json;
+        manifestReady = true;
+        console.log(json ? 'Audio manifest loaded: '+Object.keys(json).length+' entries'
+                         : 'Manifest unavailable, using Web Speech API fallback');
+        return json;
+      });
   }
+  return manifestPromise;
 }
 
 function stopAll(){
@@ -678,13 +683,20 @@ function stopAll(){
 
 function speak(text, rate, onEnd){
   stopAll();
-  
+  loadManifest();                 // 冪等: 進行中Promiseを確保(タップ起点でも確実に読み込む)
+  if(!manifestReady){             // まだ決着していなければ待ってから判定(競合での取りこぼし防止)
+    manifestPromise.then(() => playText(text, rate, onEnd));
+    return;
+  }
+  playText(text, rate, onEnd);
+}
+
+function playText(text, rate, onEnd){
   // Chirp 3 HD MP3を優先使用
   if(audioManifest && audioManifest[text]){
     try{
       const audio = new Audio(AUDIO_BASE + audioManifest[text]);
       // rate: 0.5 = ゆっくり再生(復習用), 1.0 = ネイティブ速度
-      // Chirp 3生成時は既に0.9で生成しているので、ここでさらに調整可能
       audio.playbackRate = rate ? Math.max(0.5, Math.min(2, rate / 0.85)) : 1.0;
       audio.preservesPitch = true; // 音程を維持
       currentAudio = audio;
@@ -694,19 +706,12 @@ function speak(text, rate, onEnd){
       });
       audio.addEventListener('error', () => {
         if(currentAudio === audio) currentAudio = null;
-        // MP3失敗時はWeb Speech APIへフォールバック
-        speakFallback(text, rate, onEnd);
+        speakFallback(text, rate, onEnd);   // MP3失敗時はWeb Speech APIへ
       });
-      audio.play().catch(() => {
-        // 自動再生ブロック等の場合
-        speakFallback(text, rate, onEnd);
-      });
+      audio.play().catch(() => speakFallback(text, rate, onEnd)); // 自動再生ブロック等
       return;
-    }catch(e){
-      // 例外時もフォールバック
-    }
+    }catch(e){ /* 例外時もフォールバック */ }
   }
-  
   // フォールバック: Web Speech API
   speakFallback(text, rate, onEnd);
 }
@@ -721,6 +726,23 @@ function speakFallback(text, rate, onEnd){
   u.onend = () => {if(onEnd) onEnd();};
   u.onerror = () => {if(onEnd) onEnd();};
   setTimeout(() => speechSynthesis.speak(u), 30);
+}
+
+// ユニットを開いたら、その文・語彙の音声を先読みしてService Workerのキャッシュに保存する。
+// これで未再生でもオフラインで鳴り、初回タップも待たずに即再生できる(失敗は無視)。
+function prefetchUnitAudio(u){
+  if(!u) return;
+  const warm = () => {
+    if(!audioManifest) return;
+    const seen = new Set();
+    const add = (t) => {
+      if(!t || seen.has(t)) return; seen.add(t);
+      const file = audioManifest[t];
+      if(file) fetch(AUDIO_BASE + file).catch(() => {}); // SWがcache-firstで保存。失敗は無視
+    };
+    u.sentences.forEach(s => { add(s.ru); (s.words||[]).forEach(w => add(w.ru)); });
+  };
+  if(manifestReady) warm(); else loadManifest().then(warm);
 }
 
 function showVoiceNotice(el){
@@ -823,6 +845,7 @@ function openUnit(uid){
   endGlobalReview();
   state.unit=uid;state.mode='list';state.cardIdx=0;state.cardFlipped=false;state.quiz=null;state.reviewQueue=null;
   const u=currentUnit();
+  prefetchUnitAudio(u);   // この単元の音声を先読み保存(オフライン対応・初回再生の高速化)
   $('study-title').textContent=u.title;
   $('study-ru-title').textContent=u.ruTitle;
   $$('.mode-tab').forEach(t=>t.classList.remove('active'));
