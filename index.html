@@ -1236,8 +1236,15 @@ loadCourses().then(renderHome).catch(err=>{
   if(list) list.innerHTML='<div class="notice">コースデータを読み込めませんでした。ページを再読み込みしてください。</div>';
 });
 
-// PWA — service worker registration
+// PWA — service worker registration + seamless auto-update
 if('serviceWorker' in navigator){
+  // If this page was already controlled by a service worker, a controllerchange means a
+  // NEW version just activated → reload once to pick up fresh HTML/JS/manifest with no
+  // manual cache clearing. Skipped on the first-ever visit (no prior controller).
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(hadController && !window.__swReloaded){ window.__swReloaded = true; window.location.reload(); }
+  });
   navigator.serviceWorker.register('./service-worker.js')
     .then(reg=>console.log('SW registered, scope:',reg.scope))
     .catch(err=>console.log('SW registration failed:',err));

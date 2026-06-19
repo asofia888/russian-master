@@ -7,7 +7,7 @@
 //   - Other static (icon.svg, manifest.json): cache-first
 // Bump VERSION whenever shell assets change so old caches get evicted.
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL_CACHE = 'ru-shell-' + VERSION;
 const DATA_CACHE  = 'ru-data-'  + VERSION;
 const FONT_CACHE  = 'ru-font-'  + VERSION;
@@ -51,8 +51,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Course/audio manifest — stale-while-revalidate so updates propagate but UI never blocks
-  if (url.origin === self.location.origin && (url.pathname.endsWith('/courses.json') || url.pathname.endsWith('/audio-manifest.json'))) {
+  // audio-manifest.json — network-first so the text→file map is always current when online
+  // (a stale map can point at renamed/removed audio and fall back to silence). Offline → cache.
+  if (url.origin === self.location.origin && url.pathname.endsWith('/audio-manifest.json')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(DATA_CACHE);
+      try {
+        const res = await fetch(req);
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+      } catch (e) {
+        return (await cache.match(req)) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // courses.json — stale-while-revalidate (large; staleness only delays new content, never breaks audio)
+  if (url.origin === self.location.origin && url.pathname.endsWith('/courses.json')) {
     event.respondWith(staleWhileRevalidate(req, DATA_CACHE));
     return;
   }
