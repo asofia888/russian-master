@@ -87,6 +87,26 @@
   .stat-num{font-family:'Shippori Mincho',serif;font-size:22px;font-weight:600;color:var(--accent);line-height:1;}
   .stat-label{font-size:12px;color:var(--ink-muted);letter-spacing:.15em;margin-top:6px;}
 
+  /* DAILY — streak + today's goal */
+  .daily-bar{
+    margin:-8px 16px 24px;padding:16px 20px;background:var(--bg-card);
+    border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow-sm);
+    display:flex;align-items:center;gap:20px;
+  }
+  .daily-streak{text-align:center;flex-shrink:0;padding-right:20px;border-right:1px solid var(--line-soft);}
+  .streak-num{font-family:'Shippori Mincho',serif;font-size:26px;font-weight:600;color:var(--accent);line-height:1;}
+  .streak-num .unit{font-size:13px;margin-left:2px;color:var(--ink-soft);font-weight:500;}
+  .streak-label{font-size:11px;color:var(--ink-muted);letter-spacing:.15em;margin-top:6px;}
+  .daily-goal{flex:1;min-width:0;}
+  .goal-line{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .goal-label{font-size:12px;color:var(--ink-muted);letter-spacing:.12em;}
+  .goal-count{font-family:'Shippori Mincho',serif;font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.05em;}
+  .goal-track{height:5px;background:var(--line-soft);border-radius:3px;overflow:hidden;}
+  .goal-fill{height:100%;width:0;background:var(--gold);border-radius:3px;transition:width .4s ease;}
+  .goal-fill.done{background:var(--green);}
+  .goal-msg{font-size:11.5px;color:var(--ink-muted);letter-spacing:.08em;margin-top:7px;min-height:14px;}
+  .goal-msg.done{color:var(--green);}
+
   .section-title{
     padding:8px 24px 14px;font-family:'Shippori Mincho',serif;
     font-size:14px;font-weight:600;letter-spacing:.2em;color:var(--ink);
@@ -315,6 +335,41 @@
   .quiz-next-btn.show{display:block;animation:fadeIn .25s;}
   .quiz-next-btn:active{transform:scale(.99);}
 
+  /* QUIZ — 形式選択メニュー */
+  .quiz-menu{display:flex;flex-direction:column;gap:12px;padding-top:4px;}
+  .quiz-menu-head{font-size:12px;letter-spacing:.25em;color:var(--gold);text-transform:uppercase;text-align:center;margin-bottom:6px;}
+  .quiz-menu-btn{
+    background:var(--bg-card);border:1px solid var(--line);border-radius:8px;
+    padding:18px 20px;cursor:pointer;text-align:left;box-shadow:var(--shadow-sm);
+    transition:transform .15s,box-shadow .2s;
+  }
+  .quiz-menu-btn:active{transform:scale(.99);}
+  .quiz-menu-btn.disabled{opacity:.45;pointer-events:none;}
+  .qm-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;gap:12px;}
+  .qm-title{font-family:'Shippori Mincho',serif;font-size:17px;font-weight:600;letter-spacing:.08em;color:var(--ink);}
+  .qm-ru{font-family:'PT Serif',serif;font-size:12.5px;color:var(--accent);flex-shrink:0;}
+  .qm-desc{font-size:12.5px;color:var(--ink-muted);letter-spacing:.04em;line-height:1.6;}
+
+  /* QUIZ — 聴き取り */
+  .listen-btn{
+    width:64px;height:64px;border-radius:50%;border:1px solid var(--line);
+    background:var(--bg-sub);color:var(--accent);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:background .2s,transform .15s;margin:6px 0 10px;
+  }
+  .listen-btn:active{transform:scale(.95);}
+  .listen-btn.playing{background:var(--accent-soft);}
+  .listen-btn svg{width:26px;height:26px;}
+  .listen-hint{font-size:11.5px;color:var(--ink-faint);letter-spacing:.15em;}
+  .listen-reveal{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-soft);animation:fadeIn .25s ease;}
+  .listen-reveal .rv-ru{font-family:'Noto Sans',sans-serif;font-weight:600;font-size:20px;line-height:1.5;color:var(--ink);margin-bottom:4px;}
+
+  .quiz-menu-link{
+    margin-top:14px;width:100%;background:transparent;border:none;cursor:pointer;
+    font-size:12.5px;color:var(--ink-muted);letter-spacing:.1em;
+    text-decoration:underline;text-underline-offset:3px;padding:8px;
+  }
+
   .quiz-result{text-align:center;padding:40px 24px;}
   .quiz-result-emoji{font-family:'PT Serif',serif;font-size:32px;color:var(--gold);margin-bottom:16px;}
   .quiz-result-title{font-family:'Shippori Mincho',serif;font-size:22px;font-weight:600;margin-bottom:8px;letter-spacing:.1em;}
@@ -421,6 +476,17 @@
       <div class="stat-item"><div class="stat-num" id="stat-learned">0</div><div class="stat-label">学習済</div></div>
       <div class="stat-item"><div class="stat-num" id="stat-due">0</div><div class="stat-label">今日復習</div></div>
       <div class="stat-item"><div class="stat-num" id="stat-percent">0%</div><div class="stat-label">進捗</div></div>
+    </div>
+    <div class="daily-bar">
+      <div class="daily-streak">
+        <div class="streak-num"><span id="streak-num">0</span><span class="unit">日</span></div>
+        <div class="streak-label">連続学習</div>
+      </div>
+      <div class="daily-goal">
+        <div class="goal-line"><span class="goal-label">今日の学習</span><span class="goal-count" id="goal-count">0 / 20</span></div>
+        <div class="goal-track"><div class="goal-fill" id="goal-fill"></div></div>
+        <div class="goal-msg" id="goal-msg"></div>
+      </div>
     </div>
     <div id="home-review-cta"></div>
     <div class="section-title">コース・Курсы</div>
@@ -535,12 +601,24 @@ function loadProgress(){
     const p=r?JSON.parse(r):{};
     if(!p.learned) p.learned={};
     if(!p.srs) p.srs={};
+    if(!p.daily) p.daily={};
     return p;
-  }catch{return{learned:{},srs:{}};}
+  }catch{return{learned:{},srs:{},daily:{}};}
 }
 function saveProgress(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(progress));}catch{}}
 const progress = loadProgress();
 function sentKey(c,u,i){return c+'/'+u+'/'+i;}
+
+// 日別学習カウント(ストリーク・今日の目標用)。キーは端末ローカル日付 YYYY-MM-DD。
+const DAILY_GOAL = 20;
+function todayKey(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function bumpDaily(){
+  const k=todayKey();
+  progress.daily[k]=(progress.daily[k]||0)+1;
+}
 
 // EXPORT / IMPORT
 function showDataMsg(text,isError){
@@ -552,9 +630,9 @@ function showDataMsg(text,isError){
 }
 function exportProgress(){
   const data={
-    app:'russian-master',version:2,
+    app:'russian-master',version:3,
     exportedAt:new Date().toISOString(),
-    progress:{learned:progress.learned,srs:progress.srs}
+    progress:{learned:progress.learned,srs:progress.srs,daily:progress.daily}
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -591,7 +669,7 @@ function setLearned(c,u,i,v){
   const k=sentKey(c,u,i);
   if(v){
     if(!progress.srs[k]) gradeSrs(c,u,i,4);
-    else { progress.learned[k]=1; saveProgress(); }
+    else { progress.learned[k]=1; bumpDaily(); saveProgress(); }
   }else{
     delete progress.learned[k];
     delete progress.srs[k];
@@ -626,6 +704,7 @@ function gradeSrs(c,u,i,q){
   s.l=now;
   progress.srs[k]=s;
   if(s.r>=1) progress.learned[k]=1;
+  bumpDaily();
   saveProgress();
 }
 function isDue(c,u,i){const s=progress.srs[sentKey(c,u,i)];return !!s && s.d<=Date.now();}
@@ -787,6 +866,7 @@ function renderHome(){
   $('stat-learned').textContent=g.learned;
   $('stat-due').textContent=due;
   $('stat-percent').textContent=g.percent+'%';
+  renderDailyBar();
   const cta=$('home-review-cta');
   if(due>0){
     cta.innerHTML=
@@ -814,6 +894,24 @@ function renderHome(){
     card.addEventListener('click',()=>openCourse(key));
     w.appendChild(card);
   });
+}
+
+// ストリークと今日の学習目標。カウントは gradeSrs / setLearned / 語彙クイズ回答で増える。
+function renderDailyBar(){
+  const tk=todayKey();
+  const streak=calcStreak(progress.daily,tk);   // srs.js(テスト済み)
+  const todayN=progress.daily[tk]||0;
+  const done=todayN>=DAILY_GOAL;
+  $('streak-num').textContent=streak;
+  $('goal-count').textContent=todayN+' / '+DAILY_GOAL;
+  const fill=$('goal-fill');
+  fill.style.width=Math.min(100,Math.round(todayN/DAILY_GOAL*100))+'%';
+  fill.classList.toggle('done',done);
+  const msg=$('goal-msg');
+  msg.classList.toggle('done',done);
+  msg.textContent=done
+    ? '今日の目標を達成しました ✦ Отлично!'
+    : (todayN>0 ? 'あと '+(DAILY_GOAL-todayN)+' 件で今日の目標達成' : 'カード・復習・クイズが目標にカウントされます');
 }
 
 function openCourse(key){
@@ -1104,12 +1202,44 @@ function renderReviewEmpty(){
   });
 }
 
-// QUIZ
-function startQuiz(){
+// QUIZ — 3形式: mixed(露⇄日4択) / listening(聴き取り) / vocab(語彙)
+// クイズタブを開くとまず形式選択メニューを表示する。
+function getUnitWords(u){
+  const seen=new Set(),words=[];
+  u.sentences.forEach(s=>(s.words||[]).forEach(w=>{
+    if(!seen.has(w.ru)){seen.add(w.ru);words.push(w);}
+  }));
+  return words;
+}
+function startQuiz(){renderQuizMenu();}
+function quizMenuBtn(type,title,ru,desc){
+  return `<button class="quiz-menu-btn" data-type="${type}">`+
+    `<div class="qm-head"><span class="qm-title">${title}</span><span class="qm-ru">${ru}</span></div>`+
+    `<div class="qm-desc">${desc}</div></button>`;
+}
+function renderQuizMenu(){
+  state.quiz=null;
+  $('study-counter').textContent='クイズ';
   const u=currentUnit();
-  const all=u.sentences.map((s,idx)=>({s,idx}));
-  const qs=shuffle(all).slice(0,Math.min(10,all.length));
-  state.quiz={questions:qs,pool:all,current:0,correct:0,answers:[],answered:false,direction:'ru2jp'};
+  const nWords=getUnitWords(u).length;
+  $('quiz-area').innerHTML=
+    `<div class="quiz-menu">`+
+      `<div class="quiz-menu-head">Выберите формат・形式を選ぶ</div>`+
+      quizMenuBtn('mixed','総合クイズ','Тест','露→日・日→露の4択。文の意味を確認します')+
+      quizMenuBtn('listening','聴き取りクイズ','Аудирование','音声だけを聞いて意味を選ぶ。テキストは答え合わせ後に表示')+
+      (nWords>=4
+        ? quizMenuBtn('vocab','語彙クイズ','Словарь',`この課の新出語 ${nWords} 語から出題`)
+        : `<div class="quiz-menu-btn disabled"><div class="qm-head"><span class="qm-title">語彙クイズ</span><span class="qm-ru">Словарь</span></div><div class="qm-desc">この課は新出語が少ないため出題できません</div></div>`)+
+    `</div>`;
+  $$('.quiz-menu-btn[data-type]').forEach(b=>b.addEventListener('click',()=>beginQuiz(b.dataset.type)));
+}
+function beginQuiz(type){
+  const u=currentUnit();
+  const pool = type==='vocab'
+    ? getUnitWords(u).map((s,idx)=>({s,idx}))       // 語彙: {ru,ph,jp} は文と同形
+    : u.sentences.map((s,idx)=>({s,idx}));
+  const qs=shuffle(pool).slice(0,Math.min(10,pool.length));
+  state.quiz={type,questions:qs,pool,current:0,correct:0,answers:[],answered:false,direction:'ru2jp'};
   renderQuizQ();
 }
 function renderQuizQ(){
@@ -1117,7 +1247,7 @@ function renderQuizQ(){
   if(q.current>=q.questions.length){renderQuizResult();return;}
   $('study-counter').textContent=(q.current+1)+' / '+q.questions.length;
   const cur=q.questions[q.current];const sent=cur.s;
-  q.direction=Math.random()<0.5?'ru2jp':'jp2ru';
+  q.direction = q.type==='listening' ? 'listen' : (Math.random()<0.5?'ru2jp':'jp2ru');
   const distract=shuffle(q.pool.filter(x=>x.idx!==cur.idx)).slice(0,3);
   const opts=shuffle([cur,...distract]);
 
@@ -1132,16 +1262,25 @@ function renderQuizQ(){
   pips+='</div>';
 
   // Question card
-  const qh = q.direction==='ru2jp'
-    ? `<div class="quiz-question"><div class="quiz-prompt">ロシア語 → 日本語</div><button type="button" class="quiz-ru" id="quiz-ru" lang="ru">${escapeHtml(sent.ru)}</button><div class="quiz-ph-small">${escapeHtml(sent.ph)}</div></div>`
-    : `<div class="quiz-question"><div class="quiz-prompt">日本語 → ロシア語</div><div class="quiz-jp">${escapeHtml(sent.jp)}</div></div>`;
+  const vocab = q.type==='vocab' ? '単語:' : '';
+  let qh;
+  if(q.direction==='listen'){
+    qh=`<div class="quiz-question"><div class="quiz-prompt">聴き取り → 日本語</div>`+
+       `<button type="button" class="listen-btn" id="listen-btn" aria-label="ロシア語の音声を再生">${ICONS.speaker}</button>`+
+       `<div class="listen-hint">タップでもう一度聞く</div>`+
+       `<div class="listen-reveal" id="listen-reveal" hidden><div class="rv-ru" lang="ru">${escapeHtml(sent.ru)}</div><div class="quiz-ph-small">${escapeHtml(sent.ph)}</div></div></div>`;
+  }else if(q.direction==='ru2jp'){
+    qh=`<div class="quiz-question"><div class="quiz-prompt">${vocab}ロシア語 → 日本語</div><button type="button" class="quiz-ru" id="quiz-ru" lang="ru">${escapeHtml(sent.ru)}</button><div class="quiz-ph-small">${escapeHtml(sent.ph)}</div></div>`;
+  }else{
+    qh=`<div class="quiz-question"><div class="quiz-prompt">${vocab}日本語 → ロシア語</div><div class="quiz-jp">${escapeHtml(sent.jp)}</div></div>`;
+  }
 
-  // Options
+  // Options — 聴き取りは露→日と同じく日本語の選択肢
   const optsHtml = opts.map(o=>{
     const correct = o.idx===cur.idx ? '1' : '0';
-    return q.direction==='ru2jp'
-      ? `<button class="quiz-option" data-correct="${correct}"><div class="opt-jp">${escapeHtml(o.s.jp)}</div></button>`
-      : `<button class="quiz-option" data-correct="${correct}"><div class="opt-ru">${escapeHtml(o.s.ru)}</div><div class="opt-ph">${escapeHtml(o.s.ph)}</div></button>`;
+    return q.direction==='jp2ru'
+      ? `<button class="quiz-option" data-correct="${correct}"><div class="opt-ru">${escapeHtml(o.s.ru)}</div><div class="opt-ph">${escapeHtml(o.s.ph)}</div></button>`
+      : `<button class="quiz-option" data-correct="${correct}"><div class="opt-jp">${escapeHtml(o.s.jp)}</div></button>`;
   }).join('');
   const oh = `<div class="quiz-options">${optsHtml}</div><button class="quiz-next-btn" id="quiz-next-btn">次の問題へ</button>`;
 
@@ -1151,6 +1290,10 @@ function renderQuizQ(){
     const t=$('quiz-ru');
     t.addEventListener('click',()=>playWithHighlight(t, sent.ru, 0.75));
     setTimeout(()=>playWithHighlight(t, sent.ru, 0.8), 200);
+  }else if(q.direction==='listen'){
+    const t=$('listen-btn');
+    t.addEventListener('click',()=>playWithHighlight(t, sent.ru, 0.8));
+    setTimeout(()=>playWithHighlight(t, sent.ru, 0.8), 250);
   }
   q.answered=false;
   $$('.quiz-option').forEach(opt=>{
@@ -1160,8 +1303,10 @@ function renderQuizQ(){
       $$('.quiz-option').forEach(o=>{o.classList.add('disabled'); if(o.dataset.correct==='1') o.classList.add('correct');});
       if(!correct) opt.classList.add('wrong');
       if(q.direction==='jp2ru') speak(sent.ru, 0.75);
-      if(correct){ q.correct++; q.answers.push('correct'); gradeSrs(state.course,state.unit,cur.idx,4); }
-      else      { q.answers.push('wrong');   gradeSrs(state.course,state.unit,cur.idx,1); }
+      if(q.direction==='listen') $('listen-reveal').hidden=false;   // 答え合わせ後にテキストを表示
+      if(correct){ q.correct++; q.answers.push('correct'); } else { q.answers.push('wrong'); }
+      if(q.type==='vocab'){ bumpDaily(); saveProgress(); }          // 語彙は文のSRS対象外・日別カウントのみ
+      else gradeSrs(state.course,state.unit,cur.idx,correct?4:1);
       $('quiz-next-btn').classList.add('show');
     });
   });
@@ -1185,8 +1330,10 @@ function renderQuizResult(){
       `<div class="quiz-result-actions">`+
         `<button class="retry" id="quiz-retry">もう一度</button>`+
         `<button class="next" id="quiz-back">レッスンへ戻る</button>`+
-      `</div></div>`;
-  $('quiz-retry').addEventListener('click',()=>startQuiz());
+      `</div>`+
+      `<button class="quiz-menu-link" id="quiz-menu-link">別の形式のクイズを選ぶ</button></div>`;
+  $('quiz-retry').addEventListener('click',()=>beginQuiz(q.type));
+  $('quiz-menu-link').addEventListener('click',()=>renderQuizMenu());
   $('quiz-back').addEventListener('click',()=>document.querySelector('.mode-tab[data-mode="list"]').click());
   const s2=getUnitStats(state.course,state.unit);
   $('study-counter').textContent=s2.learned+' / '+s2.total;

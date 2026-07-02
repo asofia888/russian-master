@@ -32,6 +32,7 @@
   // 取り込んだ進捗 p を target にその場マージする(新しい記録優先)。
   // SRSエントリは、取り込み側の最終学習 l が現在以上のときだけ置き換える
   // (= 古いバックアップを読み込んでも、より新しいローカル履歴を巻き戻さない)。
+  // 日別学習カウント daily は日付ごとに大きい方を採用(二重計上せず、取りこぼしもしない)。
   // 戻り値: 新規追加した learned 件数と、追加/更新した srs 件数。
   function mergeProgress(target, p) {
     let nl = 0, ns = 0;
@@ -48,8 +49,28 @@
         ns++;
       }
     });
+    if (p && p.daily && typeof p.daily === 'object') {
+      if (!target.daily) target.daily = {};
+      Object.keys(p.daily).forEach(k => {
+        const n = +p.daily[k] || 0;
+        if (n > (target.daily[k] || 0)) target.daily[k] = n;
+      });
+    }
     return { learned: nl, srs: ns };
   }
 
-  return { nextIntervalDays, nextEase, mergeProgress };
+  // 連続学習日数。daily は { 'YYYY-MM-DD': 学習件数 }、today も 'YYYY-MM-DD'。
+  // 今日まだ学習していなくてもストリークは切れない(昨日まで続いていれば継続中とみなす)。
+  function calcStreak(daily, today) {
+    if (!daily || typeof daily !== 'object') return 0;
+    const DAY = 86400000;
+    let t = Date.parse(today + 'T00:00:00Z');
+    if (isNaN(t)) return 0;
+    if (!(+daily[today] > 0)) t -= DAY;   // 今日が未学習なら昨日から遡る
+    let n = 0;
+    while (+daily[new Date(t).toISOString().slice(0, 10)] > 0) { n++; t -= DAY; }
+    return n;
+  }
+
+  return { nextIntervalDays, nextEase, mergeProgress, calcStreak };
 });

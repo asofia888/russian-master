@@ -2,7 +2,7 @@
 // srs.js の単体テスト。実行: npm test (= node --test)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { nextIntervalDays, nextEase, mergeProgress } = require('./srs.js');
+const { nextIntervalDays, nextEase, mergeProgress, calcStreak } = require('./srs.js');
 
 const approx = (a, b) => Math.abs(a - b) < 1e-9;
 
@@ -64,4 +64,41 @@ test('mergeProgress: learned/srs が欠けた入力でも壊れない', () => {
   const target = { learned: {}, srs: {} };
   const r = mergeProgress(target, {});
   assert.deepEqual(r, { learned: 0, srs: 0 });
+});
+
+test('mergeProgress: daily は日付ごとに大きい方を採用', () => {
+  const target = { learned: {}, srs: {}, daily: { '2026-07-01': 5, '2026-07-02': 3 } };
+  mergeProgress(target, { learned: {}, srs: {}, daily: { '2026-07-01': 2, '2026-07-02': 8, '2026-06-30': 4 } });
+  assert.deepEqual(target.daily, { '2026-06-30': 4, '2026-07-01': 5, '2026-07-02': 8 });
+});
+
+test('mergeProgress: daily 未初期化の target / daily なしの入力でも壊れない', () => {
+  const t1 = { learned: {}, srs: {} };
+  mergeProgress(t1, { learned: {}, srs: {}, daily: { '2026-07-02': 1 } });
+  assert.deepEqual(t1.daily, { '2026-07-02': 1 });
+  const t2 = { learned: {}, srs: {}, daily: { '2026-07-02': 1 } };
+  mergeProgress(t2, { learned: {}, srs: {} });
+  assert.deepEqual(t2.daily, { '2026-07-02': 1 });
+});
+
+test('calcStreak: 今日を含む連続日数を数える', () => {
+  const daily = { '2026-06-30': 2, '2026-07-01': 5, '2026-07-02': 1 };
+  assert.equal(calcStreak(daily, '2026-07-02'), 3);
+});
+
+test('calcStreak: 今日が未学習でも昨日まで続いていれば継続中', () => {
+  const daily = { '2026-06-30': 2, '2026-07-01': 5 };
+  assert.equal(calcStreak(daily, '2026-07-02'), 2);
+});
+
+test('calcStreak: 途切れたらそこで止まる / 一昨日までの記録では 0', () => {
+  assert.equal(calcStreak({ '2026-06-28': 1, '2026-06-30': 1, '2026-07-02': 1 }, '2026-07-02'), 1);
+  assert.equal(calcStreak({ '2026-06-30': 9 }, '2026-07-02'), 0);
+});
+
+test('calcStreak: 空・不正入力は 0', () => {
+  assert.equal(calcStreak({}, '2026-07-02'), 0);
+  assert.equal(calcStreak(null, '2026-07-02'), 0);
+  assert.equal(calcStreak({ '2026-07-02': 1 }, 'not-a-date'), 0);
+  assert.equal(calcStreak({ '2026-07-02': 0 }, '2026-07-02'), 0); // 0件は学習日と数えない
 });
